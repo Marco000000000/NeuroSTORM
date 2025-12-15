@@ -48,12 +48,8 @@ def build_series_map() -> Dict[str, str]:
     series.update({
         'fmri_1': 'Results/rfMRI_REST1_LR/rfMRI_REST1_LR_hp2000_clean.nii.gz',
         'fmri_2': 'Results/rfMRI_REST1_RL/rfMRI_REST1_RL_hp2000_clean.nii.gz',
-        'fmri_3': 'Results/rfMRI_REST2_LR/rfMRI_REST1_LR_hp2000_clean.nii.gz',
-        'fmri_4': 'Results/rfMRI_REST2_RL/rfMRI_REST1_RL_hp2000_clean.nii.gz',
-        'fmri_5': 'Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_hp2000_clean.nii.gz',
-        'fmri_6': 'Results/rfMRI_REST2_7T_AP/rfMRI_REST2_7T_AP_hp2000_clean.nii.gz',
-        'fmri_7': 'Results/rfMRI_REST3_7T_PA/rfMRI_REST3_7T_PA_hp2000_clean.nii.gz',
-        'fmri_8': 'Results/rfMRI_REST4_7T_AP/rfMRI_REST4_7T_AP_hp2000_clean.nii.gz',
+        'fmri_3': 'Results/rfMRI_REST2_LR/rfMRI_REST2_LR_hp2000_clean.nii.gz',
+        'fmri_4': 'Results/rfMRI_REST2_RL/rfMRI_REST2_RL_hp2000_clean.nii.gz',
         't1'    : 'T1w.nii.gz',
         't2'    : 'T2w.nii.gz',
     })

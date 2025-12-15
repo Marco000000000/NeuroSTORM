@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Download resting-state fMRI (either 3 T set or 7 T set) from
+Download resting-state fMRI (3 T set only) from
 the HCP 1200 release.
 """
 
@@ -21,19 +21,14 @@ from tqdm import tqdm
 S3_BUCKET_NAME = 'hcp-openaccess'
 S3_PREFIX      = 'HCP_1200'               # root folder in the bucket
 
-
+# ----------------------------------------------------------------------
+# 3 T resting-state fMRI paths (relative to `${S3_PREFIX}/{subject}/MNINonLinear/`)
+# ----------------------------------------------------------------------
 FMRI_3T_PATHS = [
     'Results/rfMRI_REST1_LR/rfMRI_REST1_LR_hp2000_clean.nii.gz',
     'Results/rfMRI_REST1_RL/rfMRI_REST1_RL_hp2000_clean.nii.gz',
-    'Results/rfMRI_REST2_LR/rfMRI_REST1_LR_hp2000_clean.nii.gz',
-    'Results/rfMRI_REST2_RL/rfMRI_REST1_RL_hp2000_clean.nii.gz',
-]
-
-FMRI_7T_PATHS = [
-    'Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_hp2000_clean.nii.gz',
-    'Results/rfMRI_REST2_7T_AP/rfMRI_REST2_7T_AP_hp2000_clean.nii.gz',
-    'Results/rfMRI_REST3_7T_PA/rfMRI_REST3_7T_PA_hp2000_clean.nii.gz',
-    'Results/rfMRI_REST4_7T_AP/rfMRI_REST4_7T_AP_hp2000_clean.nii.gz',
+    # 'Results/rfMRI_REST2_LR/rfMRI_REST2_LR_hp2000_clean.nii.gz',
+    # 'Results/rfMRI_REST2_RL/rfMRI_REST2_RL_hp2000_clean.nii.gz',
 ]
 
 
@@ -47,9 +42,9 @@ def download_rest_fmri(
     aws_secret_access_key: str,
     proc_idx: int = 0
 ):
-    """Download 3 T or 7 T resting-state fMRI for each subject."""
+    """Download 3 T resting-state fMRI for each subject."""
 
-    # S3 connection in this process
+    # Initialize S3 connection for this process
     s3 = boto3.resource(
         's3',
         aws_access_key_id     = aws_access_key_id,
@@ -57,32 +52,32 @@ def download_rest_fmri(
     )
     bucket = s3.Bucket(S3_BUCKET_NAME)
 
-    # Transfer configuration
+    # Configure multipart transfer (adjust if necessary)
     GB = 1024 ** 3
     config = TransferConfig(
-        max_concurrency   = 500,
+        max_concurrency     = 500,
         multipart_threshold = int(0.01 * GB),
         multipart_chunksize = int(0.01 * GB)
     )
 
-    # Missing download recorder
+    # Dict to record subjects with missing files
     missing_dict: Dict[str, List[str]] = {}
 
-    bar = tqdm(subjects, position=proc_idx, desc=f'Proc {proc_idx}', leave=False)
+    bar = tqdm(subjects, position=proc_idx,
+               desc=f'Proc {proc_idx}', leave=False)
 
     for sid in bar:
         base_prefix = f'{S3_PREFIX}/{sid}/MNINonLinear/'
 
-        # First try 3 T paths
-        chosen_set  = FMRI_3T_PATHS
         success     = 0
         tmp_missing = []
 
-        for rel in chosen_set:
+        for rel in FMRI_3T_PATHS:
             key   = base_prefix + rel
-            fname = os.path.join(out_dir, f'{sid}_{os.path.basename(rel)}')
+            fname = os.path.join(out_dir,
+                                 f'{sid}_{os.path.basename(rel)}')
 
-            # Already on disk?
+            # Skip if the file already exists locally
             if os.path.exists(fname):
                 success += 1
                 continue
@@ -96,36 +91,18 @@ def download_rest_fmri(
                 tmp_missing.append(rel)
                 print(f'[Warning][{sid}] download error: {e}')
 
-        if success == 0:
-            chosen_set  = FMRI_7T_PATHS
-            tmp_missing = []
-            for rel in chosen_set:
-                key   = base_prefix + rel
-                fname = os.path.join(out_dir, f'{sid}_{os.path.basename(rel)}')
-
-                if os.path.exists(fname):
-                    success += 1
-                    continue
-                try:
-                    bucket.download_file(key, fname, Config=config)
-                    success += 1
-                except ClientError:
-                    tmp_missing.append(rel)
-                except Exception as e:
-                    tmp_missing.append(rel)
-                    print(f'[Warning][{sid}] download error: {e}')
-
-        # Record missing (if any)
+        # Record missing files (if any)
         if tmp_missing:
             missing_dict[sid] = tmp_missing
 
-        bar.set_postfix({'ok': success, 'set': '7T' if success and chosen_set is FMRI_7T_PATHS else '3T'})
+        bar.set_postfix({'ok': success})
 
     bar.close()
 
-    # Write missing CSV for this process
+    # Write a CSV containing missing items for this process
     if missing_dict:
-        csv_name = os.path.join(out_dir, f'missing_downloads_{proc_idx}.csv')
+        csv_name = os.path.join(out_dir,
+                                f'missing_downloads_{proc_idx}.csv')
         with open(csv_name, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             for sid, miss in missing_dict.items():
@@ -149,8 +126,8 @@ def run_processes(
                            aws_access_key_id, aws_secret_access_key, 0)
         return
 
-    total = len(subjects)
-    stride = total // workers
+    total     = len(subjects)
+    stride    = total // workers
     processes: List[Process] = []
 
     for idx in range(workers):
@@ -173,8 +150,10 @@ def run_processes(
 # ----------------------------------------------------------------------
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--id',  required=True, type=str, help='AWS access key id')
-    parser.add_argument('--key', required=True, type=str, help='AWS secret key')
+    parser.add_argument('--id',  required=True, type=str,
+                        help='AWS access key id')
+    parser.add_argument('--key', required=True, type=str,
+                        help='AWS secret key')
     parser.add_argument('-o', '--out_dir', required=True, type=str,
                         help='local output directory')
     parser.add_argument('--save_subject_id', action='store_true',
@@ -183,7 +162,9 @@ if __name__ == '__main__':
                         help='number of parallel processes')
     args = parser.parse_args()
 
-    # Prepare subject list ------------------------------------------------
+    # ------------------------------------------------------------------
+    # Prepare subject list
+    # ------------------------------------------------------------------
     if args.save_subject_id:
         import csv
         subj_set = set()
@@ -201,11 +182,11 @@ if __name__ == '__main__':
         with open('all_pid.pkl', 'rb') as f:
             subjects = pickle.load(f)
 
-    # Ensure output directory exists -------------------------------------
+    # Ensure output directory exists
     out_dir = os.path.abspath(args.out_dir)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Launch download -----------------------------------------------------
+    # Launch download
     run_processes(subjects, out_dir,
                   args.id, args.key,
                   max(1, args.cpu_worker))
