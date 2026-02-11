@@ -1,0 +1,162 @@
+/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/lightning_fabric/__init__.py:29: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  __import__("pkg_resources").declare_namespace(__name__)
+[rank: 0] Global seed set to 1234
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+/home/mfinocchiaro/miccai2026/NeuroSTORM/train_miccai.py:82: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(args.load_model_path)
+[rank: 0] Global seed set to 1234
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+You are using a CUDA device ('NVIDIA A100-PCIE-40GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:613: UserWarning: Checkpoint directory output/neurostorm/miccai_final_SCHZ_boom/fold_0/checkpoints exists and is not empty.
+  rank_zero_warn(f"Checkpoint directory {dirpath} exists and is not empty.")
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name            | Type       | Params
+-----------------------------------------------
+0 | model           | NeuroSTORM | 5.2 M 
+1 | output_head     | cls_head   | 865   
+2 | supcon_loss     | SupConLoss | 0     
+3 | projection_head | Sequential | 120 K 
+-----------------------------------------------
+5.3 M     Trainable params
+0         Non-trainable params
+5.3 M     Total params
+21.176    Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/mfinocchiaro/miccai2026/NeuroSTORM/datasets/fmri_datasets_miccai.py:153: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  y_i = torch.load(img_path).unsqueeze(0)
+/home/mfinocchiaro/miccai2026/NeuroSTORM/datasets/fmri_datasets_miccai.py:153: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  y_i = torch.load(img_path).unsqueeze(0)
+/home/mfinocchiaro/miccai2026/NeuroSTORM/datasets/fmri_datasets_miccai.py:153: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  y_i = torch.load(img_path).unsqueeze(0)
+/home/mfinocchiaro/miccai2026/NeuroSTORM/datasets/fmri_datasets_miccai.py:153: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  y_i = torch.load(img_path).unsqueeze(0)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/mfinocchiaro/miccai2026/NeuroSTORM/train_miccai.py", line 108, in <module>
+[rank0]:     cli_main()
+[rank0]:   File "/home/mfinocchiaro/miccai2026/NeuroSTORM/train_miccai.py", line 96, in cli_main
+[rank0]:     trainer.fit(model, datamodule=data_module)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 608, in fit
+[rank0]:     call._call_and_handle_interrupt(
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 38, in _call_and_handle_interrupt
+[rank0]:     return trainer_fn(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 650, in _fit_impl
+[rank0]:     self._run(model, ckpt_path=self.ckpt_path)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1112, in _run
+[rank0]:     results = self._run_stage()
+[rank0]:               ^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1191, in _run_stage
+[rank0]:     self._run_train()
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1214, in _run_train
+[rank0]:     self.fit_loop.run()
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/loop.py", line 199, in run
+[rank0]:     self.advance(*args, **kwargs)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 267, in advance
+[rank0]:     self._outputs = self.epoch_loop.run(self._data_fetcher)
+[rank0]:                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/loop.py", line 199, in run
+[rank0]:     self.advance(*args, **kwargs)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/epoch/training_epoch_loop.py", line 213, in advance
+[rank0]:     batch_output = self.batch_loop.run(kwargs)
+[rank0]:                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/loop.py", line 199, in run
+[rank0]:     self.advance(*args, **kwargs)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/batch/training_batch_loop.py", line 88, in advance
+[rank0]:     outputs = self.optimizer_loop.run(optimizers, kwargs)
+[rank0]:               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/loop.py", line 199, in run
+[rank0]:     self.advance(*args, **kwargs)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 202, in advance
+[rank0]:     result = self._run_optimization(kwargs, self._optimizers[self.optim_progress.optimizer_position])
+[rank0]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 249, in _run_optimization
+[rank0]:     self._optimizer_step(optimizer, opt_idx, kwargs.get("batch_idx", 0), closure)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 370, in _optimizer_step
+[rank0]:     self.trainer._call_lightning_module_hook(
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1356, in _call_lightning_module_hook
+[rank0]:     output = fn(*args, **kwargs)
+[rank0]:              ^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/core/module.py", line 1742, in optimizer_step
+[rank0]:     optimizer.step(closure=optimizer_closure)
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/core/optimizer.py", line 169, in step
+[rank0]:     step_output = self._strategy.optimizer_step(self._optimizer, self._optimizer_idx, closure, **kwargs)
+[rank0]:                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/strategies/ddp.py", line 280, in optimizer_step
+[rank0]:     optimizer_output = super().optimizer_step(optimizer, opt_idx, closure, model, **kwargs)
+[rank0]:                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 234, in optimizer_step
+[rank0]:     return self.precision_plugin.optimizer_step(
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/precision_plugin.py", line 119, in optimizer_step
+[rank0]:     return optimizer.step(closure=closure, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/optim/optimizer.py", line 487, in wrapper
+[rank0]:     out = func(*args, **kwargs)
+[rank0]:           ^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/optim/optimizer.py", line 91, in _use_grad
+[rank0]:     ret = func(self, *args, **kwargs)
+[rank0]:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/optim/adamw.py", line 197, in step
+[rank0]:     loss = closure()
+[rank0]:            ^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/precision_plugin.py", line 105, in _wrap_closure
+[rank0]:     closure_result = closure()
+[rank0]:                      ^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 149, in __call__
+[rank0]:     self._result = self.closure(*args, **kwargs)
+[rank0]:                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 135, in closure
+[rank0]:     step_output = self._step_fn()
+[rank0]:                   ^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/optimizer_loop.py", line 419, in _training_step
+[rank0]:     training_step_output = self.trainer._call_strategy_hook("training_step", *kwargs.values())
+[rank0]:                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1494, in _call_strategy_hook
+[rank0]:     output = fn(*args, **kwargs)
+[rank0]:              ^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/strategies/ddp.py", line 351, in training_step
+[rank0]:     return self.model(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/parallel/distributed.py", line 1643, in forward
+[rank0]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank0]:          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/parallel/distributed.py", line 1459, in _run_ddp_forward
+[rank0]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miniconda3/envs/neurostorm/lib/python3.11/site-packages/pytorch_lightning/overrides/base.py", line 98, in forward
+[rank0]:     output = self._forward_module.training_step(*inputs, **kwargs)
+[rank0]:              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miccai2026/NeuroSTORM/models/lightning_model_miccai.py", line 284, in training_step
+[rank0]:     loss = self._calculate_loss(batch, mode="train")
+[rank0]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miccai2026/NeuroSTORM/models/lightning_model_miccai.py", line 174, in _calculate_loss
+[rank0]:     subj, logits, target, _, backbone_features = self._compute_logits(batch, augment_during_training=self.hparams.augment_during_training)
+[rank0]:                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/home/mfinocchiaro/miccai2026/NeuroSTORM/models/lightning_model_miccai.py", line 134, in _compute_logits
+[rank0]:     fmri = batch['fmri']
+[rank0]:            ~~~~~^^^^^^^^
+[rank0]: KeyError: 'fmri'
+[rank0]:[W211 12:30:35.102054875 ProcessGroupNCCL.cpp:1250] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
+
+ERROR conda.cli.main_run:execute(125): `conda run python master_pipeline_miccai.py` failed. (See above for error)

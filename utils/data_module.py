@@ -95,38 +95,67 @@ class fMRIDataModule(pl.LightningDataModule):
                     f.write(str(subj_name) + "\n")
                     
     def determine_split_randomly(self, S):
-        np.random.seed(0)
-        S_keys = list(S.keys())
-        S_train = int(len(S_keys) * self.hparams.train_split)
-        S_val = int(len(S_keys) * self.hparams.val_split)
+        # Imposta il seed per riproducibilità
+        np.random.seed(self.hparams.seed) 
         
-        if self.hparams.downstream_task_type == 'classification':
-            S_train = select_elements(S, S_train)
-            S_remaining = {k: v for k, v in S.items() if k not in S_train}
-            S_train_keys = list(S_train.keys())
-        else:
-            S_train_keys = np.random.choice(S_keys, S_train, replace=False)
-        
-        remaining_keys = np.setdiff1d(S_keys, S_train_keys)
+        print("\n" + "="*40)
+        print(f"✂️  GENERAZIONE SPLIT (Force Independent Test Set)")
+        print(f"   Target Split: Train={self.hparams.train_split}, Val={self.hparams.val_split}")
 
-        if self.hparams.downstream_task_type == 'classification':
-            S_val = select_elements(S_remaining, S_val)
-            S_val_keys = list(S_val.keys())
-            if self.hparams.val_split + self.hparams.train_split < 1:
-                S_test = {k: v for k, v in S_remaining.items() if k not in S_val}
-                S_test_keys = list(S_test.keys())
-        else:
-            S_val_keys = np.random.choice(remaining_keys, S_val, replace=False)
-            if self.hparams.val_split + self.hparams.train_split < 1:
-                S_test_keys = np.setdiff1d(S_keys, np.concatenate([S_train_keys, S_val_keys]))
+        S_keys = list(S.keys())
+        n_total = len(S_keys)
         
-        if self.hparams.val_split + self.hparams.train_split < 1:
-            self.save_split({"train_subjects": S_train_keys, "val_subjects": S_val_keys, "test_subjects": S_test_keys})
-            return S_train_keys, S_val_keys, S_test_keys
+        # Calcolo numeri esatti
+        n_train = int(n_total * self.hparams.train_split)
+        n_val = int(n_total * self.hparams.val_split)
+        
+        # --- 1. SELEZIONE TRAIN ---
+        if self.hparams.downstream_task_type == 'classification':
+            S_train = select_elements(S, n_train)
+            S_train_keys = list(S_train.keys())
+            # Identifica rimanenti
+            S_remaining = {k: v for k, v in S.items() if k not in S_train}
         else:
-            self.save_split({"train_subjects": S_train_keys, "val_subjects": S_val_keys, "test_subjects": S_val_keys})
-            return S_train_keys, S_val_keys, S_val_keys
-    
+            S_train_keys = np.random.choice(S_keys, n_train, replace=False)
+            S_remaining_keys = np.setdiff1d(S_keys, S_train_keys)
+            S_remaining = {k: S[k] for k in S_remaining_keys}
+
+        # --- 2. SELEZIONE VAL ---
+        if self.hparams.downstream_task_type == 'classification':
+            S_val = select_elements(S_remaining, n_val)
+            S_val_keys = list(S_val.keys())
+            # Identifica rimanenti per il TEST (Quello che prima falliva)
+            S_test = {k: v for k, v in S_remaining.items() if k not in S_val}
+            S_test_keys = list(S_test.keys())
+        else:
+            S_val_keys = np.random.choice(list(S_remaining.keys()), n_val, replace=False)
+            S_test_keys = np.setdiff1d(list(S_remaining.keys()), S_val_keys)
+
+        # --- 3. CONTROLLO DI SICUREZZA ---
+        # Se il Test set è vuoto (perché magari train+val = 1.0), rubiamo dal Val!
+        if len(S_test_keys) == 0:
+            print("⚠️ ATTENZIONE: Test Set vuoto! Sposto metà del Validation nel Test.")
+            half_val = len(S_val_keys) // 2
+            S_test_keys = S_val_keys[half_val:]
+            S_val_keys = S_val_keys[:half_val]
+
+        print(f"   📊 Risultato:")
+        print(f"   - Train: {len(S_train_keys)} soggetti")
+        print(f"   - Val:   {len(S_val_keys)} soggetti")
+        print(f"   - Test:  {len(S_test_keys)} soggetti")
+        
+        # Verifica intersezione (Anti-Leakage Check)
+        leak = set(S_val_keys).intersection(set(S_test_keys))
+        if len(leak) > 0:
+            raise ValueError(f"🚨 CRITICO: Trovati {len(leak)} soggetti duplicati tra Val e Test!")
+        else:
+            print("   ✅ Check Superato: Val e Test sono DISGIUNTI.")
+        print("="*40 + "\n")
+
+        # Salva sempre i 3 split separati
+        self.save_split({"train_subjects": S_train_keys, "val_subjects": S_val_keys, "test_subjects": S_test_keys})
+        
+        return S_train_keys, S_val_keys, S_test_keys
     def load_split(self):
         subject_order = open(self.split_file_path, "r").readlines()
         subject_order = [x[:-1] for x in subject_order]
@@ -554,6 +583,7 @@ class fMRIDataModule(pl.LightningDataModule):
                 "task_name": self.hparams.task_name,
                 "shuffle_time_sequence": self.hparams.shuffle_time_sequence,
                 "label_scaling_method": self.hparams.label_scaling_method,
+                "num_classes": self.hparams.num_classes,  # <--- AGGIUNGI QUESTA RIGA!
                 "dtype": 'float16'}
         
         subject_dict = self.make_subject_dict()

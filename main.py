@@ -113,8 +113,8 @@ def cli_main():
     elif args.downstream_task_type == "classification":
         checkpoint_callback = ModelCheckpoint(
             dirpath=dirpath,
-            monitor="valid_acc",
-            filename="checkpt-{epoch:02d}-{valid_acc:.2f}",
+            monitor="valid_AUROC",
+            filename="checkpt-{epoch:02d}-{valid_AUROC:.2f}",
             save_last=True,
             mode="max",
         )
@@ -181,15 +181,30 @@ def cli_main():
                 new_state_dict[k.removeprefix("model.")] = v
         model.model.load_state_dict(new_state_dict, strict=False)
 
+    # if args.freeze_feature_extractor:
+    #     # layers are frozen by using eval()
+    #     model.model.eval()
+    #     # freeze params
+    #     for name, param in model.model.named_parameters():
+    #         if 'output_head' not in name: # unfreeze only output head
+    #             param.requires_grad = False
+    #             print(f'freezing layer {name}')
     if args.freeze_feature_extractor:
-        # layers are frozen by using eval()
-        model.model.eval()
-        # freeze params
+        print("\n❄️  PARTIAL FREEZING STRATEGY ACTIVE (Main.py)")
+        
+        # 1. Rimuoviamo model.eval()! Vogliamo che i layer sbloccati usino Dropout/BN in training.
+        # model.model.eval() <--- RIMOSSO
+        
+        # 2. Blocca TUTTO l'encoder inizialmente
+        print("   🔒 Freezing entire encoder...")
         for name, param in model.model.named_parameters():
-            if 'output_head' not in name: # unfreeze only output head
-                param.requires_grad = False
-                print(f'freezing layer {name}')
-
+            # Blocchiamo tutto quello che appartiene all'encoder (model.model)
+            param.requires_grad = False
+            
+        if hasattr(model.model, 'norm') and model.model.norm is not None:
+            print("   🔓 Unfreezing Final Normalization Only")
+            for param in model.model.norm.parameters():
+                param.requires_grad = True
     # ------------ run -------------
     if args.test_only:
         trainer.test(model, datamodule=data_module, ckpt_path=args.test_ckpt_path) # dataloaders=data_module

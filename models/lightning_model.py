@@ -34,7 +34,21 @@ class LightningModel(pl.LightningModule):
     def __init__(self, data_module, **kwargs):
         super().__init__()
         self.save_hyperparameters(kwargs) # save hyperparameters except data_module (data_module cannot be pickled as a checkpoint)
-       
+        # In models/lightning_model.py
+        
+        # Caso Binario (Control vs Schz)
+        if self.hparams.dataset_name == 'UCLA' and self.hparams.num_classes == 2:
+            print("⚖️  Using Weighted Loss for Binary Task (Control vs Schz)")
+            # Pesi approssimativi basati sul rapporto 108:46
+            # Controllo (Classe 0): 0.7
+            # Schizofrenia (Classe 1): 2.3
+            self.class_weights = torch.tensor([0.7, 2.3])
+            
+        # Caso Multiclasse (Vecchio)
+        elif self.hparams.dataset_name == 'UCLA' and self.hparams.num_classes == 4:
+            self.class_weights = torch.tensor([0.5267, 1.4191, 1.4293, 1.4345])
+        else:
+            self.class_weights = None
         # you should define target_values at the Dataset classes
         target_values = data_module.train_dataset.target_values
         if self.hparams.label_scaling_method == 'standardization':
@@ -244,7 +258,12 @@ class LightningModel(pl.LightningModule):
                     loss = F.binary_cross_entropy_with_logits(logits, target)
                     acc = self.metric.get_accuracy_binary(logits, target.float().squeeze())
                 elif self.hparams.num_classes > 2:
-                    loss = F.cross_entropy(logits, target.long().squeeze())
+                    # --- MODIFICA: Usa i pesi se presenti ---
+                    if self.class_weights is not None:
+                        weight = self.class_weights.to(logits.device)
+                        loss = F.cross_entropy(logits, target.long().squeeze(), weight=weight)
+                    else:
+                        loss = F.cross_entropy(logits, target.long().squeeze())
                     acc = self.metric.get_accuracy(logits, target.float().squeeze())
                 
                 result_dict = {

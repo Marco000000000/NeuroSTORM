@@ -290,6 +290,85 @@ class ADHD200(BaseDataset):
         return data
         
 
+# class UCLA(BaseDataset):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+
+#     def _set_data(self, root, subject_dict):
+#         data = []
+#         img_root = os.path.join(root, 'img')
+
+#         for i, subject_name in enumerate(subject_dict):
+#             sex, target = subject_dict[subject_name]
+#             subject_path = os.path.join(img_root, '{}'.format(subject_name))
+#             num_frames = len(os.listdir(subject_path))
+#             session_duration = num_frames - self.sample_duration + 1
+
+#             for start_frame in range(0, session_duration, self.stride):
+#                 data_tuple = (i, subject_name, subject_path, start_frame, self.stride, num_frames, target, sex)
+#                 data.append(data_tuple)
+                        
+#         if self.train: 
+#             self.target_values = np.array([tup[6] for tup in data]).reshape(-1, 1)
+
+#         return data
+
+# class UCLA(BaseDataset):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+
+#     def _set_data(self, root, subject_dict):
+#         data = []
+#         img_root = os.path.join(root, 'img')
+        
+#         # Path eventi
+#         event_root = os.path.join(root, 'metadata', 'events')
+        
+#         # Parametri
+#         TR = 2.0  
+#         TARGET_EVENTS = ['EXPLODE'] #['BALOON',
+
+#         print(f"🔄 UCLA Event-Aware Loading (TR={TR}s, Events={TARGET_EVENTS})")
+
+#         found_events = 0
+        
+#         for i, subject_name in enumerate(subject_dict):
+#             sex, target = subject_dict[subject_name]
+#             subject_path = os.path.join(img_root, '{}'.format(subject_name))
+#             event_file = os.path.join(event_root, f"{subject_name}.tsv")
+            
+#             if not os.path.exists(subject_path): continue
+#             if not os.path.exists(event_file): continue
+
+#             try:
+#                 df = pd.read_csv(event_file, sep='\t')
+#                 df.columns = [c.lower() for c in df.columns]
+#                 type_col = 'trial_type' if 'trial_type' in df.columns else 'event_type'
+                
+#                 events = df[df[type_col].isin(TARGET_EVENTS)]
+#                 num_frames = len(os.listdir(subject_path))
+                
+#                 for _, row in events.iterrows():
+#                     onset = row['onset']
+#                     start_frame = int(round(onset / TR))
+                    
+#                     # Controllo bordi
+#                     if start_frame + self.sequence_length <= num_frames:
+#                         # --- CORREZIONE QUI ---
+#                         # Prima c'era '1', ora mettiamo self.sample_duration (che vale 20)
+#                         data_tuple = (i, subject_name, subject_path, start_frame, self.sample_duration, num_frames, target, sex)
+#                         data.append(data_tuple)
+#                         found_events += 1
+                        
+#             except Exception as e:
+#                 print(f"Error loading events for {subject_name}: {e}")
+
+#         if self.train: 
+#             self.target_values = np.array([tup[6] for tup in data]).reshape(-1, 1)
+
+#         print(f"✅ Loaded {len(data)} event-locked segments from {len(subject_dict)} subjects.")
+#         return data
+
 class UCLA(BaseDataset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -297,23 +376,78 @@ class UCLA(BaseDataset):
     def _set_data(self, root, subject_dict):
         data = []
         img_root = os.path.join(root, 'img')
+        event_root = os.path.join(root, 'metadata', 'events')
+        
+        TR = 2.0  
+        TARGET_ACTION = 'EXPLODE' # Il gold standard per la diagnosi
 
+        print(f"🔄 UCLA Event-Aware Loading (TR={TR}s, Action={TARGET_ACTION})")
+
+        found_events = 0
+        loaded_subjects = 0
+        
+        # Iteriamo sui soggetti passati dal DataModule
         for i, subject_name in enumerate(subject_dict):
             sex, target = subject_dict[subject_name]
-            subject_path = os.path.join(img_root, '{}'.format(subject_name))
-            num_frames = len(os.listdir(subject_path))
-            session_duration = num_frames - self.sample_duration + 1
 
-            for start_frame in range(0, session_duration, self.stride):
-                data_tuple = (i, subject_name, subject_path, start_frame, self.stride, num_frames, target, sex)
-                data.append(data_tuple)
+            # --- SAFETY CHECK PER BINARY CLASSIFICATION ---
+            # Se siamo in modalità 2 classi (Control vs Schizofrenia),
+            # ignoriamo preventivamente Bipolar (2) e ADHD (3) se il DataModule li ha passati.
+            if hasattr(self, 'num_classes') and self.num_classes == 2:
+                if target > 1: 
+                    continue
+            # ----------------------------------------------
+
+            subject_path = os.path.join(img_root, '{}'.format(subject_name))
+            event_file = os.path.join(event_root, f"{subject_name}.tsv")
+            
+            if not os.path.exists(subject_path): continue
+            if not os.path.exists(event_file): continue
+
+            try:
+                df = pd.read_csv(event_file, sep='\t')
+                df.columns = [c.lower() for c in df.columns]
+                
+                # Cerca le esplosioni nella colonna 'action'
+                if 'action' in df.columns:
+                    events = df[df['action'].astype(str).str.upper() == TARGET_ACTION]
+                else:
+                    # Se non c'è la colonna action, saltiamo il soggetto
+                    continue
+
+                # Conta i frame disponibili nella cartella immagini
+                num_frames = len(os.listdir(subject_path))
+                
+                subject_has_valid_events = False
+
+                for _, row in events.iterrows():
+                    onset = row['onset']
+                    # Conversione Tempo -> Frame Index
+                    start_frame = int(round(onset / TR))
+                    
+                    # Controllo bordi: assicuriamoci che la sequenza (20 frame) stia dentro la scan
+                    if start_frame + self.sequence_length <= num_frames:
+                        data_tuple = (i, subject_name, subject_path, start_frame, self.sample_duration, num_frames, target, sex)
+                        data.append(data_tuple)
+                        found_events += 1
+                        subject_has_valid_events = True
+                
+                if subject_has_valid_events:
+                    loaded_subjects += 1
                         
+            except Exception as e:
+                print(f"Error loading events for {subject_name}: {e}")
+
         if self.train: 
             self.target_values = np.array([tup[6] for tup in data]).reshape(-1, 1)
 
+        print(f"✅ Loaded {found_events} EXPLOSION events from {loaded_subjects} subjects.")
+        
+        # Se non troviamo nulla, avvisiamo subito per evitare crash silenziosi
+        if len(data) == 0:
+            print("⚠️ WARNING: Nessun evento caricato! Controlla 'TARGET_ACTION' o i path.")
+
         return data
-
-
 class HCPEP(BaseDataset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

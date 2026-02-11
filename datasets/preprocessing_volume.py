@@ -1,232 +1,119 @@
+import os
+import glob
+import argparse
+import numpy as np
 import nibabel as nib
 import torch
-from scipy.ndimage import zoom
-import os
-import time
-from multiprocessing import Process, Queue
-import argparse
-import torch.nn.functional as F
-import numpy as np
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
+def load_nii(path):
+    img = nib.load(path)
+    return img.get_fdata(), img.affine
 
-def select_middle_96(vector):
-    start_index, end_index = [], []
-    for i in range(3):
-        if vector.shape[i] > 96:
-            start_index.append((vector.shape[i] - 96) // 2)
-            end_index.append(start_index[-1] + 96)
-        else:
-            start_index.append(0)
-            end_index.append(vector.shape[i])
-
-    if len(vector.shape) == 3:
-        result = vector[start_index[0]:end_index[0], start_index[1]:end_index[1], start_index[2]:end_index[2]]
-    elif len(vector.shape) == 4:
-        result = vector[start_index[0]:end_index[0], start_index[1]:end_index[1], start_index[2]:end_index[2], :]
+def process_single_subject(args):
+    """
+    Wrapper per processare un singolo soggetto (thread-safe).
+    """
+    func_path, mask_path, save_dir, target_shape = args
     
-    return result
-
-
-def spatial_resampling(data, header, target_voxel_size=(2, 2, 2)):
-    current_voxel_size = header.get_zooms()[:3]
-    scale_factors = [current / target for current, target in zip(current_voxel_size, target_voxel_size)]
-    new_dims = [int(np.round(dim * scale)) for dim, scale in zip(data.shape[:3], scale_factors)]
-    
-    data = data.astype(np.float32)
-    
-    if data.ndim == 4:
-        data_tensor = torch.from_numpy(data).permute(3, 0, 1, 2).unsqueeze(1)
-    elif data.ndim == 3:
-        data_tensor = torch.from_numpy(data).unsqueeze(0).unsqueeze(0)
-    else:
-        import ipdb; ipdb.set_trace()
-    
-    resampled_tensor = F.interpolate(data_tensor, size=new_dims, mode='trilinear', align_corners=False)
-    
-    if data.ndim == 4:
-        resampled_data = resampled_tensor.squeeze(1).permute(1, 2, 3, 0).numpy()
-    else:
-        resampled_data = resampled_tensor.squeeze(0).squeeze(0).numpy()
-    
-    return resampled_data
-
-
-def temporal_resampling(data, header, target_time_resolution=0.8):
-    current_time_resolution = header.get_zooms()[3]
-    scale_factor = current_time_resolution / target_time_resolution
-    
-    original_t = data.shape[3]
-    new_t = max(int(np.round(original_t * scale_factor)), 1)
-
-    x, y, z, t = data.shape
-    data_reshaped = data.reshape(-1, t)
-    data_tensor = torch.from_numpy(data_reshaped).unsqueeze(0)
-    
-    resampled_tensor = F.interpolate(data_tensor, size=new_t, mode='linear', align_corners=False)
-    resampled_data = resampled_tensor.squeeze(0).numpy()
-    resampled_data = resampled_data.reshape(x, y, z, new_t)
-    
-    return resampled_data
-
-
-def read_data(dataset_name, delete_after_preprocess, filename, load_root, save_root, subj_name, count, queue=None, scaling_method=None, fill_zeroback=False):
-    print("processing: " + filename, flush=True)
-    path = os.path.join(load_root, filename)
     try:
-        img = nib.load(path); data = img.get_fdata(); header = img.header
-    except:
-        print('{} open failed'.format(path))
-        import ipdb; ipdb.set_trace()
-        # return None
+        filename = os.path.basename(func_path)
+        sub_id = filename.split('_')[0]
+        save_path = os.path.join(save_dir, f"{sub_id}.pt")
 
-    save_dir = os.path.join(save_root, subj_name)
-    isExist = os.path.exists(save_dir)
-    if not isExist:
-        os.makedirs(save_dir)
+        # Se esiste già, salta (utile per riprendere il lavoro)
+        if os.path.exists(save_path):
+            return None # Skip silenzioso
 
-    # resampling to fixed spatial and temporal resolution
-    data = spatial_resampling(data, header)
-    data = temporal_resampling(data, header)
-    data = select_middle_96(data)
+        # 1. Carica
+        # Carica come float32 per risparmiare RAM
+        func_img = nib.load(func_path)
+        func_data = func_img.get_fdata(dtype=np.float32)
+        
+        mask_img = nib.load(mask_path)
+        mask_data = mask_img.get_fdata(dtype=np.float32)
+        
+        # 2. Maschera e Normalizza
+        func_data[mask_data < 0.5] = 0
+        
+        mean = np.mean(func_data, axis=-1, keepdims=True)
+        std = np.std(func_data, axis=-1, keepdims=True)
+        std[std == 0] = 1.0
+        func_data = (func_data - mean) / std
+        func_data[mask_data < 0.5] = 0
 
-    # load brain mask
-    if dataset_name in ['hcpya', 'hcpa', 'hcpd', 'ukb', 'hcptask']:
-        background = data==0
-    else:
-        if dataset_name in ['abcd', 'cobre', 'hcpep']:
-            mask_path = path[:-19] + 'brain_mask.nii.gz'
-        elif dataset_name == 'movie':
-            mask_path = path[:-57] + 'space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'
-        elif dataset_name == 'transdiag':
-            mask_path = path[:-19] + 'brainmask.nii.gz'
-        elif dataset_name == 'ucla':
-            mask_path = path[:-14] + 'brainmask.nii.gz'
+        # 3. Converti in Tensore (Time, 1, X, Y, Z)
+        # Nota: Non usiamo .copy() se non necessario per risparmiare RAM
+        data_tensor = torch.from_numpy(func_data)
+        data_tensor = data_tensor.permute(3, 0, 1, 2).unsqueeze(1)
+        
+        # 4. Crop/Pad a target_shape (es. 96x96x96)
+        T, C, H, W, D = data_tensor.shape
+        final_tensor = torch.zeros((T, C, *target_shape), dtype=torch.float32)
+        
+        # Centra
+        c_h, c_w, c_d = H // 2, W // 2, D // 2
+        tc_h, tc_w, tc_d = target_shape[0] // 2, target_shape[1] // 2, target_shape[2] // 2
+        
+        start_h = max(0, c_h - tc_h); end_h = min(H, c_h + tc_h)
+        start_w = max(0, c_w - tc_w); end_w = min(W, c_w + tc_w)
+        start_d = max(0, c_d - tc_d); end_d = min(D, c_d + tc_d)
+        
+        t_start_h = max(0, tc_h - (c_h - start_h)); t_end_h = t_start_h + (end_h - start_h)
+        t_start_w = max(0, tc_w - (c_w - start_w)); t_end_w = t_start_w + (end_w - start_w)
+        t_start_d = max(0, tc_d - (c_d - start_d)); t_end_d = t_start_d + (end_d - start_d)
+        
+        final_tensor[:, :, t_start_h:t_end_h, t_start_w:t_end_w, t_start_d:t_end_d] = \
+            data_tensor[:, :, start_h:end_h, start_w:end_w, start_d:end_d]
 
-        try:
-            mask = nib.load(mask_path)
-            background = mask.get_fdata()
-            mask_header = mask.header
-        except:
-            print('mask open failed. {}'.format(mask_path))
-            import ipdb; ipdb.set_trace()
-            # return None
+        # 5. Salva
+        torch.save(final_tensor, save_path)
+        return None
 
-        background = spatial_resampling(background, mask_header)
-        background = select_middle_96(background)
-        background = background==0
-
-    data[background] = 0
-    data[data<0] = 0
-    data = torch.Tensor(data)
-
-    # normalization
-    if scaling_method == 'z-norm':
-        global_mean = data[~background].mean()
-        global_std = data[~background].std()
-        data_temp = (data - global_mean) / global_std
-    elif scaling_method == 'minmax':
-        data_temp = (data - data[~background].min()) / (data[~background].max() - data[~background].min())
-
-    data_global = torch.empty(data.shape)
-    data_global[background] = data_temp[~background].min() if not fill_zeroback else 0
-    data_global[~background] = data_temp[~background]
-
-    data_global = data_global.type(torch.float16)
-    data_global_split = torch.split(data_global, 1, 3)
-
-    for i, TR in enumerate(data_global_split):
-        torch.save(TR.clone(), os.path.join(save_dir, "frame_"+str(i)+".pt"))
-    
-    if delete_after_preprocess:
-        os.remove(path)
-        print('delete {}'.format(path))
+    except Exception as e:
+        return f"❌ Errore {os.path.basename(func_path)}: {e}"
 
 def main():
-    parser = argparse.ArgumentParser(description='Process image data.')
-    parser.add_argument('--dataset_name', type=str, required=True, help='dataset name')
-    parser.add_argument('--load_root', type=str, required=True, help='directory to load data from')
-    parser.add_argument('--save_root', type=str, required=True, help='directory to save data to')
-    parser.add_argument('--delete_after_preprocess', action='store_true', help='delete nii file after preprocess')
-    parser.add_argument('--delete_nii', action='store_true', help='if you did not delete after preprocess, you can use it to delete nii file')
-    parser.add_argument('--num_processes', type=int, default=1, help='number of processes to use')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--load_root", required=True)
+    parser.add_argument("--save_root", required=True)
+    parser.add_argument("--dataset_name", default="ucla")
+    # DEFAULT MODIFICATO: 16 core (o meno se non disponibili)
+    default_workers = min(16, multiprocessing.cpu_count())
+    parser.add_argument("--num_workers", type=int, default=default_workers, 
+                        help="Numero di processi paralleli (Default: 16)")
     args = parser.parse_args()
     
-    dataset_name = args.dataset_name
-    load_root = args.load_root
-    save_root = args.save_root
-    scaling_method = 'z-norm'
-
-    filenames = os.listdir(load_root)
-    os.makedirs(os.path.join(save_root, 'img'), exist_ok=True)
-    os.makedirs(os.path.join(save_root, 'metadata'), exist_ok=True)
-    save_root = os.path.join(save_root, 'img')
+    if not os.path.exists(args.save_root): os.makedirs(args.save_root)
+        
+    func_files = glob.glob(os.path.join(args.load_root, "*preproc_bold.nii.gz"))
     
-    queue = Queue() 
-    count = 0
+    print(f"🚀 Trovati {len(func_files)} file.")
+    print(f"🔥 Utilizzo {args.num_workers} core CPU (Modalità Cluster-Safe).")
+    
+    tasks = []
+    target_shape = (96, 96, 96)
 
-    for filename in sorted(filenames):
-        if not (filename.endswith('.nii.gz') or filename.endswith('.nii')) or 'mask' in filename or 'imagery' in filename or 'task-REST_acq' in filename:
-            continue
-
-        # Determine subject name based on dataset
-        subj_name = determine_subject_name(dataset_name, filename)
-        if args.delete_nii:
-            handle_delete_nii(load_root, save_root, filename, subj_name)
+    for func_path in func_files:
+        mask_path = func_path.replace("preproc_bold.nii.gz", "brain_mask.nii.gz")
+        if os.path.exists(mask_path):
+            tasks.append((func_path, mask_path, args.save_root, target_shape))
         else:
-            try:
-                count += 1
-                if args.num_processes == 1:
-                    read_data(dataset_name, args.delete_after_preprocess, filename, load_root, save_root, subj_name, count, queue, scaling_method)
-                else:
-                    processes = []
-                    p = Process(target=read_data, args=(dataset_name, args.delete_after_preprocess, filename, load_root, save_root, subj_name, count, queue, scaling_method))
-                    processes.append(p)
-                    p.start()
-                    if count % args.num_processes == 0:
-                        for p in processes:
-                            p.join()
-                        processes = []
-            except Exception as e:
-                print(f'encountered problem with {filename}: {e}')
+            print(f"⚠️ Maschera mancante per {os.path.basename(func_path)}")
 
+    # Esecuzione Parallela
+    with ProcessPoolExecutor(max_workers=args.num_workers) as executor:
+        futures = [executor.submit(process_single_subject, task) for task in tasks]
+        
+        # tqdm per monitorare
+        for future in tqdm(as_completed(futures), total=len(tasks), desc="Processing"):
+            result = future.result()
+            if result:
+                print(result)
 
-def determine_subject_name(dataset_name, filename):
-    if dataset_name in ['abcd', 'cobre']:
-        return filename.split('-')[1][:-4]
-    elif dataset_name == 'adhd200':
-        return filename.split('_')[2]
-    elif dataset_name == 'god':
-        return filename[:6] + '_' + filename.split('perception_')[1][:6]
-    elif dataset_name == 'hcpya':
-        return filename[:-7]
-    elif dataset_name in ['hcpd', 'hcpa']:
-        return filename[:10]
-    elif dataset_name == 'hcpep':
-        return filename[:8]
-    elif dataset_name == 'ucla':
-        return filename[:9]
-    elif dataset_name == 'ukb':
-        return filename.split('.')[0]
-    elif dataset_name == 'hcptask':
-        return filename.split('.')[0]
-    elif dataset_name == 'movie':
-        return filename.split('_acq')[0]
-    elif dataset_name == 'transdiag':
-        return filename.split('_task-testPA')[0].split('-')[1]
+    print(f"\n✅ Conversione completata in {args.save_root}")
 
-def handle_delete_nii(load_root, save_root, filename, subj_name):
-    path = os.path.join(load_root, filename)
-    save_dir = os.path.join(save_root, subj_name)
-
-    if os.path.isdir(save_dir):
-        print(f'{subj_name} has {len(os.listdir(save_dir))} slices, save_dir is {save_dir}')
-        os.remove(path)
-    else:
-        print(f'{save_dir} is empty, if you still want to delete nii file, uncomment the following code')
-        # os.remove(path)
-
-if __name__=='__main__':
-    start_time = time.time()
+if __name__ == "__main__":
     main()
-    end_time = time.time()
-    print('\nTotal', round((end_time - start_time) / 60), 'minutes elapsed.')

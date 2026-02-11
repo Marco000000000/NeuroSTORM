@@ -1,0 +1,50 @@
+
+🚀 STARTING 5-FOLD CV (MICCAI PIPELINE)
+
+⚡ FOLD 1/5
+🎯 Configuring UCLA for Task: SCHZ vs CONTROL
+Load dataset UCLA, 154 subjects
+
+⚡ [CV Fold 1/5] Setup Distinto:
+   Train: 110 | Val: 13 | Test: 31
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 701 events (['EXPLODE']) from 110 subjects.
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 85 events (['EXPLODE']) from 13 subjects.
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 241 events (['EXPLODE']) from 31 subjects.
+Samples -> Train: 701, Val: 85, Test: 241
+⚖️  Using Weighted Loss for Binary Task
+model name = neurostorm
+img_size:  (96, 96, 96, 20)
+patch_size:  [6, 6, 6, 1]
+patch_dim:  (16, 16, 16, 20)
+❄️  Supervised Contrastive Loss ENABLED
+🔧 Projection Head Input Dim: 288
+   📥 Loading pretrained: ./pretrained_models/fmrifound/last.ckpt
+🎯 Configuring UCLA for Task: SCHZ vs CONTROL
+Load dataset UCLA, 154 subjects
+
+⚡ [CV Fold 1/5] Setup Distinto:
+   Train: 110 | Val: 13 | Test: 31
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 701 events (['EXPLODE']) from 110 subjects.
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 85 events (['EXPLODE']) from 13 subjects.
+🔄 UCLA Event-Aware Loading (TR=2.0s, Actions=['EXPLODE'])
+✅ Loaded 241 events (['EXPLODE']) from 31 subjects.
+Samples -> Train: 701, Val: 85, Test: 241
+
+Training: 0it [00:00, ?it/s]
+Training:   0%|          | 0/127 [00:00<?, ?it/s]
+Epoch 0:   0%|          | 0/127 [00:00<?, ?it/s] 
+Epoch 0:   0%|          | 0/127 [00:03<?, ?it/s]🔥 STARTING SUPER MASTER PIPELINE (MICCAI EDITION)
+
+============================================================
+🧪 EXPERIMENT: SCHZ (2-Class) | Input: EXPLODE
+📁 Folder: output/neurostorm/miccai_final_SCHZ_boom
+============================================================
+
+🚀 RUNNING: python train_miccai.py --accelerator gpu --devices 1 --strategy ddp --max_epochs 30 --dataset_name UCLA --image_path ./data/UCLA_MNI_to_TRs_minmax --batch_size 8 --num_workers 4 --project_name miccai_final_SCHZ_boom --load_model_path ./pretrained_models/fmrifound/last.ckpt --num_folds 5 --use_supcon --lambda_contrast 0.5 --learning_rate 5e-5 --seed 1234 --num_classes 2 --target_diagnosis SCHZ --target_events "EXPLODE" --model neurostorm --embed_dim 36 --depth 2 2 6 2 --c_multiplier 2 --last_layer_full_MSA True --clf_head_version v1 --img_size 96 96 96 20 --sequence_length 20 --patch_size 6 6 6 1 --first_window_size 4 4 4 4 --window_size 4 4 4 4 
+❌ ERROR detected. Stopping pipeline.
+
