@@ -71,7 +71,7 @@ def cli_main():
     
     # --- ARGOMENTI DATASET/TASK ---
     parser.add_argument("--dataset_name", type=str, default="UCLA")
-    parser.add_argument("--image_path", type=str, required=True) 
+    # parser.add_argument("--image_path", type=str, required=True) 
     parser.add_argument("--downstream_task_type", type=str, default="classification")
     parser.add_argument("--task_name", type=str, default="diagnosis")
     parser.add_argument("--downstream_task_id", type=int, default=1)

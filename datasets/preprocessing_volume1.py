@@ -96,9 +96,13 @@ def read_data(dataset_name, delete_after_preprocess, filename, load_root, save_r
         if dataset_name in ['abcd', 'cobre', 'hcpep']:
             mask_path = path[:-19] + 'brain_mask.nii.gz'
         elif dataset_name == 'movie':
-            mask_path = path[:-57] + 'space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'
-        elif dataset_name == 'transdiag':
-            mask_path = path[:-19] + 'brainmask.nii.gz'
+            # Sostituisce il suffisso finale del file bold con quello della maschera
+            mask_path = path.replace('_bold.nii.gz', '_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz')
+            # Se il link simbolico non segue questo schema, prova a ricostruirlo dall'ID
+            if not os.path.exists(mask_path):
+                subj_id = filename.split('_task')[0]
+                task_id = filename.split('_task-')[1].split('_')[0]
+                mask_path = os.path.join(load_root, f"{subj_id}_task-{task_id}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz")
         elif dataset_name == 'ucla':
             mask_path = path[:-14] + 'brainmask.nii.gz'
 

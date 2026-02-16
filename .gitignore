@@ -19,3 +19,6 @@ scripts/dataset_download/hcp_t1t2
 datasets/save_frames.py
 datasets/hcp_task_2448996.csv
 .vscode/settings.json
+*
+!*.py
+!*.ipynb

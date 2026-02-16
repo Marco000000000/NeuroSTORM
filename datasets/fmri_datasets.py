@@ -646,8 +646,63 @@ class MOVIE(BaseDataset):
             self.target_values = np.array([tup[6] for tup in data]).reshape(-1, 1)
 
         return data
+class HBN(BaseDataset):
+    def __init__(self, **kwargs):
+        self.task_filter = kwargs.get('task_filter', 'movieTP')
+        super().__init__(**kwargs)
 
+    def _set_data(self, root, subject_dict):
+        data = []
+        img_root = os.path.join(root, 'img')
+        
+        # Filtro cartelle
+        all_subject_dirs = sorted([d for d in os.listdir(img_root) if self.task_filter in d])
+        
+        for i, subject_folder in enumerate(all_subject_dirs):
+            base_id = subject_folder.split('_task')[0]
+            if base_id not in subject_dict: continue
+                
+            sex, target = subject_dict[base_id]
+            subject_path = os.path.join(img_root, subject_folder)
+            
+            # Conta frame
+            all_frames = sorted([f for f in os.listdir(subject_path) if f.startswith('frame_')])
+            num_frames = len(all_frames)
+            if num_frames == 0: continue
 
+            # Split 80/10/10
+            train_end = int(num_frames * 0.8)
+            val_end = int(num_frames * 0.9)
+            
+            if self.train:
+                start_range, end_range = 0, train_end
+                # TRAIN: Stride piccolo (es. 2 o 4) per avere molti dati (Sliding Window)
+                # stride=1: Massimo data augmentation (molto lento)
+                # stride=4: Buon compromesso
+                current_stride = 2 
+            elif getattr(self, 'val', False): 
+                start_range, end_range = train_end, val_end
+                current_stride = 2 # Stride piccolo anche in val per avere qualche campione
+            else: # Test
+                start_range, end_range = val_end, num_frames
+                current_stride = 2
+
+            # Calcolo Sessione
+            session_duration = (end_range - start_range) - self.sample_duration + 1
+            
+            # Se il segmento è troppo corto per contenere anche solo una sequenza
+            if session_duration <= 0:
+                continue
+
+            # Loop con stride forzato
+            for start_frame in range(start_range, start_range + session_duration, current_stride):
+                data_tuple = (i, base_id, subject_path, start_frame, self.stride, num_frames, target, sex)
+                data.append(data_tuple)
+                        
+        if self.train: 
+            self.target_values = np.array([tup[6] for tup in data]).reshape(-1, 1)
+
+        return data
 class TransDiag(BaseDataset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

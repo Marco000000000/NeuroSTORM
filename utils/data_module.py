@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader, Subset
-from datasets.fmri_datasets import HCP1200, ABCD, UKB, Cobre, ADHD200, UCLA, HCPEP, HCPTASK, GOD, MOVIE, TransDiag
+from datasets.fmri_datasets import HCP1200, ABCD, UKB, Cobre, ADHD200, UCLA, HCPEP, HCPTASK, GOD, MOVIE, TransDiag ,HBN
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from .parser import str2bool
 
@@ -58,6 +58,8 @@ class fMRIDataModule(pl.LightningDataModule):
             return ABCD
         elif self.hparams.dataset_name == 'UKB':
             return UKB
+        elif self.hparams.dataset_name == 'HBN':
+            return HBN
         elif self.hparams.dataset_name == 'Cobre':
             return Cobre
         elif self.hparams.dataset_name == 'ADHD200':
@@ -333,7 +335,23 @@ class fMRIDataModule(pl.LightningDataModule):
                     final_dict[subject] = [sex, target]
             
             print('Load dataset ADHD200, {} subjects'.format(len(final_dict)))
-        
+        elif self.hparams.dataset_name == "HBN":
+            # Cerca tutte le sottocartelle dei soggetti in neurostorm_input_4d/img
+            subject_dirs = sorted([d for d in os.listdir(img_root) if os.path.isdir(os.path.join(img_root, d))])
+            
+            # Estrae gli ID univoci (es. da 'sub-NDAR..._task-movieTP' estrae 'sub-NDAR...')
+            unique_ids = set()
+            for s_dir in subject_dirs:
+                if "_task" in s_dir:
+                    base_id = s_dir.split('_task')[0]
+                    unique_ids.add(base_id)
+            
+            # Assegna etichette "dummy" (0, 0) a tutti. 
+            # Per il MAE, il modello ignora target e sesso, usa solo le immagini.
+            for subj_id in unique_ids:
+                final_dict[subj_id] = [0, 0]  # [sex=0, target=0]
+                
+            print(f'Load dataset HBN (MAE Domain Adaptation), {len(final_dict)} subjects ready.')
         elif self.hparams.dataset_name == "UCLA":
             subject_list = [subj for subj in os.listdir(img_root)]
             

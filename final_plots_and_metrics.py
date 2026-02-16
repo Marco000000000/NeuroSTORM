@@ -43,21 +43,39 @@ def main():
     parser.add_argument("--output_dir", type=str, default=None)
     args = parser.parse_args()
 
-    # Percorsi
+    # =========================================================
+    # 🔍 SMART PATH DETECTION (FIX PER IL TUO ERRORE)
+    # =========================================================
     if args.output_dir is None:
-        if "neurostorm" in args.project_name: category = "neurostorm" 
-        else: category = "other"
-        output_dir = os.path.join("output", category, args.project_name)
+        # Percorso 1: Neurostorm (Il più probabile)
+        path_neurostorm = os.path.join("output", "neurostorm", args.project_name)
+        # Percorso 2: Other
+        path_other = os.path.join("output", "other", args.project_name)
+
+        if os.path.exists(path_neurostorm):
+            output_dir = path_neurostorm
+        elif os.path.exists(path_other):
+            output_dir = path_other
+        else:
+            # Fallback: se non esiste nessuna delle due, usiamo neurostorm per stampare l'errore
+            output_dir = path_neurostorm
     else:
         output_dir = args.output_dir
 
     file_path = os.path.join(output_dir, args.csv_file)
     if not os.path.exists(file_path):
         print(f"❌ File not found: {file_path}")
+        print(f"   (Checked in: {output_dir})")
         return
 
     print(f"📊 Generazione Report Avanzato: {args.project_name}")
-    df = pd.read_csv(file_path)
+    print(f"   📂 Reading from: {file_path}")
+    
+    try:
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        print(f"❌ Errore lettura CSV: {e}")
+        return
 
     # --- Pre-processing ---
     first_prob = df['prob'].iloc[0]
@@ -68,7 +86,7 @@ def main():
         if len(df['prob'].iloc[0]) > 2:
             is_multiclass = True
             num_classes = len(df['prob'].iloc[0])
-            class_labels = [f"Class {i}" for i in range(num_classes)] # Placeholder
+            class_labels = [f"Class {i}" for i in range(num_classes)]
         else:
             df['prob'] = df['prob'].apply(lambda x: x[1])
             class_labels = ["Control", "Case"]
@@ -89,10 +107,14 @@ def main():
             y_prob = df['prob'].values
 
             # --- Calcolo Soglia Ottimale ---
-            fpr, tpr, thresholds = roc_curve(y_true, y_prob)
-            roc_auc = auc(fpr, tpr)
-            J = tpr - fpr
-            best_thresh = thresholds[np.argmax(J)]
+            if len(np.unique(y_true)) > 1:
+                fpr, tpr, thresholds = roc_curve(y_true, y_prob)
+                roc_auc = auc(fpr, tpr)
+                J = tpr - fpr
+                best_thresh = thresholds[np.argmax(J)]
+            else:
+                roc_auc = 0.5
+                best_thresh = 0.5
             
             # --- Metriche: Default (0.5) vs Optimized ---
             preds_05 = (y_prob >= 0.5).astype(int)
@@ -108,16 +130,17 @@ def main():
             f.write(f"   ----------------------------------\n")
             f.write(f"   THRESHOLD 0.5 (Default):\n")
             f.write(f"     Accuracy: {acc_05:.4f}\n")
-            f.write(f"     F1 Score: {f1_score(y_true, preds_05):.4f}\n")
+            f.write(f"     F1 Score: {f1_score(y_true, preds_05, zero_division=0):.4f}\n")
             f.write(f"   ----------------------------------\n")
             f.write(f"   THRESHOLD {best_thresh:.4f} (Optimized):\n")
             f.write(f"     Accuracy: {acc_opt:.4f}  <-- BEST\n")
-            f.write(f"     F1 Score: {f1_score(y_true, preds_opt):.4f}\n\n")
+            f.write(f"     F1 Score: {f1_score(y_true, preds_opt, zero_division=0):.4f}\n\n")
 
             # --- Grafici Clip-Level ---
             # ROC
             plt.figure(figsize=(8, 6))
-            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC (AUC = {roc_auc:.2f})')
+            if len(np.unique(y_true)) > 1:
+                plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC (AUC = {roc_auc:.2f})')
             plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
             plt.xlabel('False Positive Rate')
             plt.ylabel('True Positive Rate')
@@ -149,9 +172,13 @@ def main():
             y_sub_prob = subj_df['prob'].values
             
             # Soglia ottimale anche per soggetti
-            fpr_s, tpr_s, thresh_s = roc_curve(y_sub_true, y_sub_prob)
-            auc_sub = auc(fpr_s, tpr_s)
-            best_thresh_sub = thresh_s[np.argmax(tpr_s - fpr_s)]
+            if len(np.unique(y_sub_true)) > 1:
+                fpr_s, tpr_s, thresh_s = roc_curve(y_sub_true, y_sub_prob)
+                auc_sub = auc(fpr_s, tpr_s)
+                best_thresh_sub = thresh_s[np.argmax(tpr_s - fpr_s)]
+            else:
+                auc_sub = 0.5
+                best_thresh_sub = 0.5
             
             y_sub_pred = (y_sub_prob >= best_thresh_sub).astype(int)
             acc_sub = accuracy_score(y_sub_true, y_sub_pred)
@@ -173,11 +200,15 @@ def main():
             # ==================================================================
             # 3. ANALISI PER TASK (Se disponibile)
             # ==================================================================
-            # Nota: Al momento il CSV non ha la colonna 'task' o 'event'. 
-            # Se la aggiungiamo in futuro, questo codice funzionerà.
             if 'event' in df.columns:
                 f.write(f"🧩 TASK-SPECIFIC ANALYSIS\n")
-                for task in df['event'].unique():
+                # Filtra eventi 'unknown' se presenti
+                valid_events = [e for e in df['event'].unique() if e != 'unknown']
+                
+                if len(valid_events) == 0:
+                     f.write(f"   No specific events found (all marked 'unknown').\n")
+                
+                for task in valid_events:
                     task_df = df[df['event'] == task]
                     if len(task_df) > 0:
                         t_acc = accuracy_score(task_df['true'], (task_df['prob'] >= best_thresh).astype(int))
@@ -197,7 +228,7 @@ def main():
             
             f.write(f"🚦 MULTICLASS METRICS\n")
             f.write(f"   Accuracy: {acc:.4f}\n")
-            f.write(classification_report(y_true, y_pred) + "\n")
+            f.write(classification_report(y_true, y_pred, zero_division=0) + "\n")
             
             # Confusion Matrix %
             plot_cm(y_true, y_pred, range(num_classes), 
