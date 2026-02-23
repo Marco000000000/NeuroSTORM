@@ -11,14 +11,14 @@ import shutil
 DATA_ROOT = "/home/mfinocchiaro/miccai2026/NeuroSTORM/data/neurostorm_input_4d/img"
 
 # Percorso del checkpoint MAE addestrato
-CKPT_PATH = "/home/mfinocchiaro/miccai2026/NeuroSTORM/output/neurostorm/hbn_mae_domain_adaptation/checkpt-epoch=09-valid_loss=0.09.ckpt" 
+# CKPT_PATH = "/home/mfinocchiaro/miccai2026/NeuroSTORM/output/neurostorm/hbn_mae_domain_adaptation/checkpt-epoch=09-valid_loss=0.09.ckpt" 
 CKPT_PATH = "/home/mfinocchiaro/miccai2026/NeuroSTORM/output/neurostorm/hbn_mae_split_50_10_40/checkpt-epoch=09-valid_loss=0.09.ckpt"
-CKPT_PATH = "/home/mfinocchiaro/miccai2026/NeuroSTORM/pretrained_models/fmrifound/pt_fmrifound_mae_ratio0.5.ckpt"
+# CKPT_PATH = "/home/mfinocchiaro/miccai2026/NeuroSTORM/pretrained_models/fmrifound/pt_fmrifound_mae_ratio0.5.ckpt"
 # Dove salvare le feature divise
-OUTPUT_DIR = "/home/mfinocchiaro/miccai2026/NeuroSTORM/hbn_data/neurostorm_features_split_pre"
+OUTPUT_DIR = "/home/mfinocchiaro/miccai2026/NeuroSTORM/hbn_data/neurostorm_features_despicable_50"
 
 # Filtro task (es. 'movieTP')
-TASK_FILTER = "movieTP"
+TASK_FILTER = "movieDM"
 
 # Parametri Modello (devono corrispondere al training)
 IMG_SIZE = (96, 96, 96, 20)
