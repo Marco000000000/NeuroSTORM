@@ -22,3 +22,5 @@ datasets/hcp_task_2448996.csv
 *
 !*.py
 !*.ipynb
+!*/*.py
+!*/*.ipynb
